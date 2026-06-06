@@ -3,17 +3,20 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <SPI.h>
+#include <EEPROM.h>
 
-#include "lib/Ticker.h"
+#include "Ticker.h"
+#include "unit.h"
 
-#define WIFI_MODE ACCESS_POINT
+#define WIFI_MODE STA_CONNECT // настройка WiFi; STA_CONNECT - подключение к сужествующей WiFi сети, ACCESS_POINT - запуск собственой точки доступа
 
 LCD_1602_RUS lcd(0x27, 16, 2, 2); //задаем адрес экрана 0x27, 16 символов, 2 строки
-ESP8266WebServer server(80); //сервер на пору 80
+ESP8266WebServer server(9000); //сервер на пору 9000
 
 volatile unsigned long seconds = 0;
 unsigned short time_p = 0;
 bool actives = false;
+int timer_address = 0;
 
 #include "wifi.h"
 
@@ -31,8 +34,12 @@ void setup() {
   pinMode(D1, OUTPUT);
   
   Serial.begin(115200);
-  
   Wire.begin(D6, D7);
+  EEPROM.begin(512);  // Инициализация EEPROM с размером 512 байт
+
+  Serial.println(read_number_in_eerom(timer_address));
+
+  Serial.println("Loading...");
   lcd.init(); // Инициализируем экран включаем подсветку
   lcd.backlight();
   lcd.clear(); // Очистка дисплея
@@ -104,14 +111,14 @@ void loop() {
     }
     digitalWrite(D1, true);
     lcd.setCursor(0, 1);
-    lcd.print("включено ");
+    lcd.print("вкл ");
   } else {
     digitalWrite(D1, false);
     lcd.setCursor(0, 1);
-    lcd.print("выключено");
+    lcd.print("выкл");
   }
 
-      
+   
    delay(10);
    lcd.setCursor(0, 0);
    lcd.print("               ");
