@@ -13,19 +13,20 @@
 LCD_1602_RUS lcd(0x27, 16, 2, 2); //задаем адрес экрана 0x27, 16 символов, 2 строки
 ESP8266WebServer server(9000); //сервер на пору 9000
 
-volatile unsigned long seconds = 0;
-unsigned short time_p = 0;
+volatile unsigned long seconds = 0, interval = 0;
+unsigned short time_p = 0, interval_time = 0;
+int timer_address = 0, time_p_address = 2;
 bool actives = false;
-int timer_address = 0;
+int temp;
 
 #include "wifi.h"
 
-void onTick() { // подсчет сикунд
-  if (actives) 
-    seconds++; 
-}
+void onTick() { if (actives) seconds++; } // подсчет секунд
+void intervalTimer() { interval++; }
+
 
 Ticker ticker(onTick, 1000);
+Ticker ticker_interval(intervalTimer, 1000);
 
 void setup() {
   pinMode(D4, INPUT_PULLUP);
@@ -37,8 +38,6 @@ void setup() {
   Wire.begin(D6, D7);
   EEPROM.begin(512);  // Инициализация EEPROM с размером 512 байт
 
-  Serial.println(read_number_in_eerom(timer_address));
-
   Serial.println("Loading...");
   lcd.init(); // Инициализируем экран включаем подсветку
   lcd.backlight();
@@ -47,6 +46,8 @@ void setup() {
 
   ticker.start();
   lcd.setCursor(0, 1);
+  time_p = read_number_in_eerom(time_p_address);
+  interval_time = read_number_in_eerom(timer_address);
 
   int status_c = 1;
 
@@ -63,7 +64,6 @@ void setup() {
   
   lcd.clear();
   lcd.setCursor(0, 1);
-  
   lcd.print("запуск сервера");
   rout_server();
 
@@ -78,32 +78,29 @@ void setup() {
 
 void loop() {
   ticker.update();
+  ticker_interval.update();
   server.handleClient();
-  
-  lcd.setCursor(0, 0);
-  lcd.print("время: " + String(time_p));
-  
+    
   if (!digitalRead(D4)){
         time_p++;
+        write_number_to_eerom(time_p_address, time_p);
         delay(25);
       }
       
   if (!digitalRead(D5)){
         if (time_p > 0){ 
           time_p--;
+          write_number_to_eerom(time_p_address, time_p);
           delay(25);
         }
    }
 
   if (!digitalRead(D2)){
-     if (actives)
-         actives = false;
-     else
-        actives = true;
+     actives = !actives;
      seconds = 0;
      delay(35);
    }
-
+  
   if (actives) {
     if (seconds >= time_p * 60){
       actives = false;
@@ -118,8 +115,19 @@ void loop() {
     lcd.print("выкл");
   }
 
+  if (interval >= interval_time) {
+    actives = true;
+    interval = 0;
+    seconds = 0;
+  }
+
    
    delay(10);
+   if (temp != time_p) {
+      lcd.setCursor(0, 0);
+      lcd.print("                "); 
+   }
    lcd.setCursor(0, 0);
-   lcd.print("               ");
+   lcd.print("время: " + String(time_p));
+   temp = time_p;
  }

@@ -2,7 +2,8 @@
 #define ACCESS_POINT "ACCESS_POINT" 
 
 void handleRoot() {
-  char* temp = read_number_in_eerom(timer_address);
+  time_p = read_number_in_eerom(time_p_address);
+  interval_time = read_number_in_eerom(timer_address);
   String html = "<!doctype html><html><head>"
                 "<meta name='viewport' content='width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=2.0'>"
                 "<meta charset='utf-8'><title>WEB управление/api</title></head><body>"
@@ -14,18 +15,14 @@ void handleRoot() {
                 "<p><input type=\"submit\" value=\"задать время\"></p>"
                 "</form>"
                 "<form action=\"/setup_time_interval\" method=\"POST\">"
-                "<p><input name=\"times\" type=\"number\" max=\"1440\" placeholder=\"" + String(temp) + "\"></p>"
+                "<p><input name=\"times\" type=\"number\" max=\"1440\" placeholder=\"" + String(interval_time) + "\"></p>"
                 "<p><input type=\"submit\" value=\"задать временой промежуток\"></p>"
                 "</body></html>";
-  Serial.println((int)temp, BIN);  
   server.send(200, "text/html", html);
 }
 
 void handleToggle() {
-   if (actives)
-      actives = false;
-   else
-      actives = true;
+   actives = !actives;
       
   server.sendHeader("Location", "/"); // перенапровление на главную страницу
   server.send(303, "text/plain", "");
@@ -42,10 +39,11 @@ void getStatus(){
 void SetupTimeNums() {
   if (server.hasArg("times")) {
     String s = server.arg("times");
-    time_p = s.toInt(); // сохраняем как int
-    
+    time_p = s.toInt(); // сохраняем как int 
+    write_number_to_eerom(time_p_address, time_p);  
     server.sendHeader("Location", "/");
     server.send(200, "text/plain", "");
+    
   } else {
     server.send(400, "text/plain", "not found args num");
   }
@@ -53,36 +51,8 @@ void SetupTimeNums() {
 
 void SetuPperiudStart() {
   if (server.hasArg("times")){
-    int number = server.arg("times").toInt();
-    
-    char r_bin[12] = {0}, bin[13] = {0};
-    short temp, i = 0;
-    
-    temp = number / 2;
-    if (number % 2 > 0)
-        r_bin[i] = '1';
-    else
-        r_bin[i] = '0';
-
-    while(temp != 0) {
-        i++;
-        if (temp % 2 > 0)
-            r_bin[i] = '1';
-        else    
-            r_bin[i] = '0';
-
-        temp = temp / 2;
-    }
-
-    short len = strlen(r_bin);                                              
-    short idx = 0;
-    for (short j = len - 1; j >= 0; j--) {
-        EEPROM.write(timer_address++, (byte)r_bin[j]);
-        idx++;
-    }
-    EEPROM.write(timer_address+idx+1, (byte)255);
-    EEPROM.commit();   // Сохранение изменений
-    
+    interval_time = server.arg("times").toInt();
+    write_number_to_eerom(timer_address, interval_time);    
     server.sendHeader("Location", "/");
     server.send(200, "text/plain", "");
     Serial.println("write interval time subprocess");
@@ -94,7 +64,7 @@ void SetuPperiudStart() {
 
 
 int connect_wifi(const char* sta_ssid, const char* sta_password) {
-   Serial.print("Connecting to WiFi");
+   Serial.println("Connecting to WiFi");
    WiFi.begin(sta_ssid, sta_password);
    
    while (WiFi.status() != WL_CONNECTED) { 
