@@ -45,6 +45,8 @@ void setup() {
   lcd.setCursor(0, 0); // Установка курсора в левый верхний
 
   ticker.start();
+  ticker_interval.start();
+  
   lcd.setCursor(0, 1);
   time_p = read_number_in_eerom(time_p_address);
   interval_time = read_number_in_eerom(timer_address);
@@ -107,15 +109,15 @@ void loop() {
       seconds = 0;
     }
     digitalWrite(D1, true);
-    lcd.setCursor(0, 1);
+    lcd.setCursor(12, 0);
     lcd.print("вкл ");
   } else {
     digitalWrite(D1, false);
-    lcd.setCursor(0, 1);
+    lcd.setCursor(12, 0);
     lcd.print("выкл");
   }
 
-  if (interval >= interval_time) {
+  if (interval >= interval_time * 60) {
     actives = true;
     interval = 0;
     seconds = 0;
@@ -123,11 +125,15 @@ void loop() {
 
    
    delay(10);
-   if (temp != time_p) {
+   if (temp != time_p + interval_time) {
       lcd.setCursor(0, 0);
-      lcd.print("                "); 
+      lcd.print("            ");
+      lcd.setCursor(0, 1);
+      lcd.print("                ");
    }
    lcd.setCursor(0, 0);
    lcd.print("время: " + String(time_p));
-   temp = time_p;
+   //lcd.setCursor(0, 1);
+   //lcd.print("интервал: " + String(interval_time));
+   temp = time_p + interval_time;
  }
